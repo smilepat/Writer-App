@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Loader2, Wand2, Zap, ZapOff } from 'lucide-react';
+import { Loader2, Wand2, Zap, ZapOff, Clock, Maximize2, Minimize2 } from 'lucide-react';
 import type { Language, Mode, Tone } from '@/app/writer/page';
 
 interface Props {
@@ -18,6 +18,10 @@ interface Props {
   onAnalyze: () => void;
   isLoading: boolean;
   hasInput: boolean;
+  historyCount?: number;
+  onShowHistory?: () => void;
+  focusMode?: boolean;
+  onToggleFocusMode?: () => void;
 }
 
 const LANGUAGES: { value: Language; label: string; flag: string }[] = [
@@ -52,6 +56,10 @@ export default function WriterMenuBar({
   apiKeyConfigured,
   onSaveApiKey,
   onAnalyze, isLoading, hasInput,
+  historyCount = 0,
+  onShowHistory,
+  focusMode,
+  onToggleFocusMode,
 }: Props) {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState('');
@@ -86,11 +94,11 @@ export default function WriterMenuBar({
         <div className="writer-control-group">
           <label className="writer-control-label">모드</label>
           <div className="writer-mode-tabs">
-            {MODES.map(m => (
+            {MODES.map((m, i) => (
               <button
                 key={m.value}
                 onClick={() => setMode(m.value)}
-                title={m.desc}
+                title={`${m.desc} (Ctrl+${i + 1})`}
                 className={`writer-mode-tab ${mode === m.value ? 'active' : ''}`}
               >
                 <span>{m.emoji}</span>
@@ -147,6 +155,19 @@ export default function WriterMenuBar({
 
       {/* Actions */}
       <div className="writer-actions">
+        {/* Focus mode toggle */}
+        {onToggleFocusMode && (
+          <button
+            type="button"
+            onClick={onToggleFocusMode}
+            className={`writer-auto-btn ${focusMode ? 'active' : ''}`}
+            title={focusMode ? '포커스 모드 끄기 (Esc)' : '포커스 모드 켜기 (Ctrl+Shift+F)'}
+          >
+            {focusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            <span>집중</span>
+          </button>
+        )}
+
         {/* Auto-analyze toggle */}
         <button
           onClick={() => setAutoAnalyze(!autoAnalyze)}
@@ -156,6 +177,18 @@ export default function WriterMenuBar({
           {autoAnalyze ? <Zap size={15} /> : <ZapOff size={15} />}
           <span>자동</span>
         </button>
+
+        {onShowHistory && (
+          <button
+            type="button"
+            onClick={onShowHistory}
+            className={`writer-key-btn ${historyCount > 0 ? 'active' : ''}`}
+            title="분석 히스토리"
+          >
+            <Clock size={14} />
+            <span>히스토리{historyCount > 0 ? ` (${historyCount})` : ''}</span>
+          </button>
+        )}
 
         <button
           onClick={() => setShowApiKeyModal(true)}
@@ -171,6 +204,7 @@ export default function WriterMenuBar({
           onClick={onAnalyze}
           disabled={isLoading || !hasInput}
           className="writer-analyze-btn"
+          title="분석 실행 (Ctrl+Enter)"
         >
           {isLoading ? (
             <>

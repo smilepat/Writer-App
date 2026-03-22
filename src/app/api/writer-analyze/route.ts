@@ -68,7 +68,18 @@ Return ONLY a valid JSON object — no markdown fences, no extra text — with t
       "relatedTerms": ["<related term 1>", "<related term 2>"]
     }
   ],
-  "contextExpansion": "<2–3 sentences expanding broader context, background, or related ideas in ${langLabel}>"
+  "contextExpansion": "<2–3 sentences expanding broader context, background, or related ideas in ${langLabel}>",
+  "writingScore": {
+    "overall": <0–100 integer>,
+    "readability": <0–100 integer>,
+    "complexity": <0–100 integer>,
+    "vocabularyDiversity": <0–100 integer>,
+    "toneConsistency": <0–100 integer>,
+    "suggestions": [
+      "<1-sentence actionable suggestion to improve writing quality in ${langLabel}>",
+      "<another suggestion in ${langLabel}>"
+    ]
+  }
 }
 
 Strict rules:
@@ -76,7 +87,8 @@ Strict rules:
 - "keywords": extract 3–6 important keywords from the input; focus on substantive/domain words
 - "concepts": identify 1–3 complex, technical, or nuanced concepts worth explaining clearly
 - "changes": list 2–4 concrete improvements made (be specific, not vague), in ${langLabel}
-- "contextExpansion": provide enriching background or connective ideas — NOT a summary`;
+- "contextExpansion": provide enriching background or connective ideas — NOT a summary
+- "writingScore": evaluate the ORIGINAL input text (not the improved version). overall = weighted average. readability = how easy to read (100=very clear). complexity = appropriate sentence structure (100=well-balanced). vocabularyDiversity = variety of word choices (100=very diverse). toneConsistency = how consistent the tone is (100=perfectly consistent). suggestions = 2–3 specific, actionable tips to improve the original text, in ${langLabel}`;
 }
 
 export async function POST(request: NextRequest) {
@@ -85,16 +97,16 @@ export async function POST(request: NextRequest) {
     const { input, language = 'ko', tone = 'formal', mode = 'refine', apiKey: clientApiKey } = body;
 
     if (!input?.trim()) {
-      return Response.json({ error: '입력 텍스트가 없습니다.' }, { status: 400 });
+      return Response.json({ error: '입력 텍스트가 없습니다.', errorType: 'empty_input' }, { status: 400 });
     }
     if (input.trim().length < 5) {
-      return Response.json({ error: '텍스트가 너무 짧습니다. 10자 이상 입력해주세요.' }, { status: 400 });
+      return Response.json({ error: '텍스트가 너무 짧습니다. 10자 이상 입력해주세요.', errorType: 'short_input' }, { status: 400 });
     }
 
     const apiKey = process.env.GEMINI_API_KEY || (typeof clientApiKey === 'string' ? clientApiKey.trim() : '');
     if (!apiKey) {
       return Response.json(
-        { error: 'Gemini API Key가 없습니다. 상단 메뉴의 API Key 버튼에서 설정해주세요.' },
+        { error: 'Gemini API Key가 없습니다. 상단 메뉴의 API Key 버튼에서 설정해주세요.', errorType: 'no_api_key' },
         { status: 401 }
       );
     }
@@ -128,10 +140,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return Response.json({ error: `AI 처리 실패: ${lastError}` }, { status: 500 });
+    const errorType = lastError.includes('rate') || lastError.includes('429') ? 'rate_limit'
+      : lastError.includes('API key') || lastError.includes('401') ? 'api_key_invalid'
+      : 'ai_failure';
+    return Response.json({ error: `AI 처리 실패: ${lastError}`, errorType }, { status: 500 });
   } catch (err: any) {
+    const msg = String(err?.message ?? '알 수 없는 오류가 발생했습니다.');
+    const errorType = msg.includes('fetch') || msg.includes('network') ? 'network' : 'unknown';
     return Response.json(
-      { error: String(err?.message ?? '알 수 없는 오류가 발생했습니다.') },
+      { error: msg, errorType },
       { status: 500 }
     );
   }

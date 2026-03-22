@@ -3,10 +3,13 @@
 import { useState } from 'react';
 import { Tag, BookOpen, Compass, ChevronDown, ChevronUp } from 'lucide-react';
 import type { AnalysisResult } from '@/app/writer/page';
+import ScorePanel from './ScorePanel';
 
 interface Props {
   result: AnalysisResult | null;
   isLoading: boolean;
+  isOpen?: boolean;
+  onToggle?: () => void;
 }
 
 const KEYWORD_COLOR_CLASSES = [
@@ -95,11 +98,19 @@ function SkeletonRow() {
   return <div className="writer-skeleton-line writer-skeleton-kw-row" />;
 }
 
-export default function KeywordsPanel({ result, isLoading }: Props) {
+export default function KeywordsPanel({ result, isLoading, isOpen = true, onToggle }: Props) {
   const hasData = !isLoading && result;
 
   return (
     <div className="writer-keywords-panel">
+      {/* === Toggle handle === */}
+      {onToggle && (
+        <button type="button" className="keywords-toggle" onClick={onToggle} title={isOpen ? '키워드 패널 접기' : '키워드 패널 펼치기'}>
+          <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+          <span>{isOpen ? '키워드 패널 접기' : '키워드 패널 펼치기'}</span>
+        </button>
+      )}
+      {isOpen && <>
       {/* === KEYWORDS SECTION === */}
       <div className="keywords-section">
         <div className="keywords-section-header">
@@ -175,6 +186,32 @@ export default function KeywordsPanel({ result, isLoading }: Props) {
           )}
         </div>
       </div>
+
+      {/* === WRITING SCORE SECTION === */}
+      <div className="score-section">
+        {isLoading ? (
+          <>
+            <div className="keywords-section-header">
+              <span>글쓰기 점수</span>
+            </div>
+            <div className="writer-skeleton">
+              <div className="writer-skeleton-line writer-skeleton-line--60 writer-skeleton-line--tall" />
+              <div className="writer-skeleton-line" />
+              <div className="writer-skeleton-line writer-skeleton-line--70" />
+            </div>
+          </>
+        ) : hasData && result.writingScore ? (
+          <ScorePanel score={result.writingScore} />
+        ) : (
+          <>
+            <div className="keywords-section-header">
+              <span>글쓰기 점수</span>
+            </div>
+            <p className="keywords-empty">분석 후 글쓰기 점수가 표시됩니다</p>
+          </>
+        )}
+      </div>
+      </>}
     </div>
   );
 }
